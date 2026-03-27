@@ -9,7 +9,6 @@ class AppOpenAdManager: NSObject, GADFullScreenContentDelegate {
     private var isLoadingAd = false
     private var isShowingAd = false
     private var loadTime: Date?
-    private var showAfterSplash = false
 
     private override init() {
         super.init()
@@ -30,12 +29,9 @@ class AppOpenAdManager: NSObject, GADFullScreenContentDelegate {
             self.appOpenAd?.fullScreenContentDelegate = self
             self.loadTime = Date()
 
-            // If splash already finished while ad was loading, show now
-            if self.showAfterSplash {
-                self.showAfterSplash = false
-                DispatchQueue.main.async {
-                    self.showAdIfAvailable()
-                }
+            // Show immediately on first load (cold launch)
+            DispatchQueue.main.async {
+                self.showAdIfAvailable()
             }
         }
     }
@@ -43,16 +39,6 @@ class AppOpenAdManager: NSObject, GADFullScreenContentDelegate {
     private var isAdAvailable: Bool {
         guard let loadTime, appOpenAd != nil else { return false }
         return Date().timeIntervalSince(loadTime) < 4 * 3600
-    }
-
-    /// Called when splash screen finishes
-    func onSplashFinished() {
-        if isAdAvailable {
-            showAdIfAvailable()
-        } else {
-            // Ad still loading — show it as soon as it arrives
-            showAfterSplash = true
-        }
     }
 
     func showAdIfAvailable() {

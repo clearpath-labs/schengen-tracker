@@ -4,14 +4,32 @@ struct SchengenCalculator {
     let trips: [Trip]
     private let cal = Calendar.current
 
+    // Pre-computed lookup: date -> Trip (built once per init)
+    private let dateTripMap: [Date: Trip]
+
+    init(trips: [Trip]) {
+        self.trips = trips
+        var map: [Date: Trip] = [:]
+        let cal = Calendar.current
+        for trip in trips {
+            let start = cal.startOfDay(for: trip.startDate)
+            let end = cal.startOfDay(for: trip.endDate)
+            var d = start
+            while d <= end {
+                map[d] = trip
+                d = cal.date(byAdding: .day, value: 1, to: d)!
+            }
+        }
+        self.dateTripMap = map
+    }
+
     /// The 180-day window starts on `windowStartDate` and ends 179 days later.
     func windowEnd(from windowStartDate: Date) -> Date {
         let start = cal.startOfDay(for: windowStartDate)
         return cal.date(byAdding: .day, value: 179, to: start)!
     }
 
-    /// Count days spent (or planned) in Schengen within the 180-day window
-    /// starting on `windowStartDate`.
+    /// Count days spent (or planned) in Schengen within the 180-day window.
     func daysUsed(windowStartDate: Date) -> Int {
         let wStart = cal.startOfDay(for: windowStartDate)
         let wEnd = windowEnd(from: windowStartDate)
@@ -36,34 +54,13 @@ struct SchengenCalculator {
         max(0, 90 - daysUsed(windowStartDate: windowStartDate))
     }
 
-    /// Whether a given date falls within any trip.
+    /// Whether a given date falls within any trip (O(1) lookup).
     func isInSchengen(on date: Date) -> Bool {
-        let d = cal.startOfDay(for: date)
-        return trips.contains { trip in
-            let s = cal.startOfDay(for: trip.startDate)
-            let e = cal.startOfDay(for: trip.endDate)
-            return d >= s && d <= e
-        }
+        dateTripMap[cal.startOfDay(for: date)] != nil
     }
 
-    /// Which trip (if any) covers the given date.
+    /// Which trip (if any) covers the given date (O(1) lookup).
     func trip(on date: Date) -> Trip? {
-        let d = cal.startOfDay(for: date)
-        return trips.first { trip in
-            let s = cal.startOfDay(for: trip.startDate)
-            let e = cal.startOfDay(for: trip.endDate)
-            return d >= s && d <= e
-        }
-    }
-
-    /// Maximum consecutive days you can add starting from today, given the window.
-    func maxStay(from today: Date, windowStartDate: Date) -> Int {
-        let wEnd = windowEnd(from: windowStartDate)
-        let todayStart = cal.startOfDay(for: today)
-
-        if todayStart > wEnd { return 90 }
-
-        let used = daysUsed(windowStartDate: windowStartDate)
-        return max(0, 90 - used)
+        dateTripMap[cal.startOfDay(for: date)]
     }
 }

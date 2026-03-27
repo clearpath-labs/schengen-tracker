@@ -4,11 +4,9 @@ struct ContentView: View {
     @EnvironmentObject var store: TripStore
     @State private var showingAddTrip = false
 
-    private var calculator: SchengenCalculator {
-        SchengenCalculator(trips: store.trips)
-    }
-
     var body: some View {
+        let calculator = SchengenCalculator(trips: store.trips)
+
         NavigationStack {
             ScrollView {
                 VStack(spacing: 16) {

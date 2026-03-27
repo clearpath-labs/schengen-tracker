@@ -17,8 +17,10 @@ struct SchengenTrackerApp: App {
 
 struct RootView: View {
     @EnvironmentObject var store: TripStore
+    @Environment(\.scenePhase) private var scenePhase
     @State private var showSplash = true
-    @State private var adsInitialized = false
+    @State private var splashFinished = false
+    @State private var attAndAdsHandled = false
 
     var body: some View {
         ZStack {
@@ -29,8 +31,7 @@ struct RootView: View {
                     withAnimation(.easeOut(duration: 0.2)) {
                         showSplash = false
                     }
-                    // After splash finishes, request ATT then start ads
-                    requestTrackingThenStartAds()
+                    splashFinished = true
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .ignoresSafeArea()
@@ -38,20 +39,40 @@ struct RootView: View {
                 .zIndex(1)
             }
         }
+        .onChange(of: scenePhase) { _, newPhase in
+            if newPhase == .active && splashFinished && !attAndAdsHandled {
+                attAndAdsHandled = true
+                handleATTAndAds()
+            }
+        }
+        .onChange(of: splashFinished) { _, finished in
+            if finished && scenePhase == .active && !attAndAdsHandled {
+                attAndAdsHandled = true
+                handleATTAndAds()
+            }
+        }
     }
 
-    private func requestTrackingThenStartAds() {
-        // Small delay to let splash dismiss animation complete
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-            ATTrackingManager.requestTrackingAuthorization { _ in
-                DispatchQueue.main.async {
-                    // Only start ads after user responds to ATT
-                    GADMobileAds.sharedInstance().start { _ in
-                        AppOpenAdManager.shared.loadAd()
-                        adsInitialized = true
+    private func handleATTAndAds() {
+        // Delay to ensure UI is fully settled
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+            let status = ATTrackingManager.trackingAuthorizationStatus
+
+            if status == .notDetermined {
+                ATTrackingManager.requestTrackingAuthorization { _ in
+                    DispatchQueue.main.async {
+                        startAds()
                     }
                 }
+            } else {
+                startAds()
             }
+        }
+    }
+
+    private func startAds() {
+        GADMobileAds.sharedInstance().start { _ in
+            AppOpenAdManager.shared.loadAndShowOnce()
         }
     }
 }

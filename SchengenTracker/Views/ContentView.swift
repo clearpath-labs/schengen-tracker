@@ -14,8 +14,7 @@ struct ContentView: View {
 
                     CalendarView()
 
-                    BannerAdView(adUnitID: AdConfig.bannerAdUnitID)
-                        .frame(height: 50)
+                    BannerAdContainer(adUnitID: AdConfig.bannerAdUnitID)
 
                     TripListView(calculator: calculator)
 
